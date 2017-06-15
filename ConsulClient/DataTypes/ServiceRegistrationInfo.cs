@@ -8,5 +8,13 @@ namespace ConsulClient.DataTypes
 {
     public class ServiceRegistrationInfo
     {
+        public string Name { get; set; }
+        public string ID { get; set; }
+        public string[] Tags { get; set; }
+        public string Address { get; set; }
+        public CheckRegistrationInfo Check { get; set; }
+        public CheckRegistrationInfo[] Checks { get; set; }
+        public bool EnableTagOverride { get; set; }
+        public int Port { get; set; }
     }
 }
