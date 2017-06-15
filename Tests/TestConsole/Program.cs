@@ -13,16 +13,7 @@ namespace TestConsole
         static void Main(string[] args)
         {
             var client = new ConsulProvider();
-            var info = new ServiceRegistrationInfo
-            {
-                Address = "localhost",
-                Name = "SomeService",
-                Port = 10411
-            };
-            var result = client.RegisterService(info);
-            result.Wait();
-            Console.WriteLine(result.Result);
-            Console.ReadKey();
+            client.DeregisterService("SomeService").Wait();
         }
     }
 }

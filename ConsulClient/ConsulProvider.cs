@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 using ConsulClient.DataTypes;
 using Flurl;
 using Flurl.Http;
+using Newtonsoft.Json.Linq;
 
 namespace ConsulClient
 {
@@ -51,10 +53,8 @@ namespace ConsulClient
             return result.StatusCode == HttpStatusCode.OK;
         }
 
-        public async Task<List<Service>> GetServices(string serviceName)
+        public async Task<JArray> GetServices(string serviceName)
         {
-            var url = $"{BaseConsulUrl()}/services";
-
             throw new NotImplementedException();
         }
 
