@@ -9,7 +9,7 @@ namespace ConsulClient
     {
         Task<bool> RegisterService(ServiceRegistrationInfo service);
         Task<bool> DeregisterService(string serviceId);
-        Task<JArray> GetServices(string serviceName);
+        Task<IList<Service>> GetServices(string serviceName);
         Task<bool> RegisterCheck(CheckRegistrationInfo check);
         Task<bool> DeregisterCheck(string checkId);
         Task<List<Check>> GetChecks();

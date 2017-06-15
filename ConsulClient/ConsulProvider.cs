@@ -30,14 +30,19 @@ namespace ConsulClient
             ServiceHostName = serviceHostName;
         }
 
-        private string BaseConsulUrl()
+        private string BaseAgentUrl()
         {
             return $"http://{ConsulHost}:{ConsulHttpPort}/v1/agent";
         }
 
+        private string BaseHealthUrl()
+        {
+            return $"http://{ConsulHost}:{ConsulHttpPort}/v1/health";
+        }
+
         public async Task<bool> RegisterService(ServiceRegistrationInfo service)
         {
-            var url = $"{BaseConsulUrl()}/service/register";
+            var url = $"{BaseAgentUrl()}/service/register";
 
             var result = await url.PostJsonAsync(service);
             
@@ -46,16 +51,28 @@ namespace ConsulClient
 
         public async Task<bool> DeregisterService(string serviceId)
         {
-            var url = $"{BaseConsulUrl()}/service/deregister/{serviceId}";
+            var url = $"{BaseAgentUrl()}/service/deregister/{serviceId}";
 
             var result = await url.PutAsync(null);
 
             return result.StatusCode == HttpStatusCode.OK;
         }
 
-        public async Task<JArray> GetServices(string serviceName)
+        public async Task<IList<Service>> GetServices(string serviceName)
         {
-            throw new NotImplementedException();
+            var url = $"{BaseHealthUrl()}/service/{serviceName}?passing";
+
+            var results = await url.GetStringAsync();
+
+            var arry = JArray.Parse(results);
+            var services = arry.Select(entry => new Service
+            {
+                Name = entry["Service"]["Service"].ToString(),
+                Address = entry["Service"]["Address"].ToString(),
+                Port = Convert.ToInt16(entry["Service"]["Port"])
+            }).ToList();
+            
+            return services;
         }
 
         public async Task<bool> RegisterCheck(CheckRegistrationInfo check)
