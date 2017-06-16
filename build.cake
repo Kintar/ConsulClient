@@ -5,7 +5,7 @@
 /*************************************************************
 Change project, product, and description to fit your project
 *************************************************************/
-var solution = ""; // Your solution name
+var solution = "ConsulClient"; // Your solution name
 var project = "ConsulClient"; // Your project name
 var product = "Consul"; // The product this project is for
 var description = ".Net client for the Consul service registry"; // A description of the product
@@ -28,18 +28,17 @@ Task("Clean")
 Task("RestoreNuGetPackages")
    .WithCriteria(() => !built)
    .Does(() => {
-      NuGetRestore(string.Format("./src/{0}.sln", solution));
+      NuGetRestore(string.Format("{0}.sln", solution));
    });
 
 Task("CreateAssemblyInfo")
    .WithCriteria(() => !built)
    .Does(() => {
-      EnsureDirectoryExists(string.Format("./src/{0}/Properties", project));
-      CreateAssemblyInfo(string.Format("./src/{0}/Properties/AssemblyInfo.cs", project), new AssemblyInfoSettings {
+      EnsureDirectoryExists(string.Format("./{0}/Properties", project));
+      CreateAssemblyInfo(string.Format("./{0}/Properties/AssemblyInfo.cs", project), new AssemblyInfoSettings {
          Product = product,
          Version = version,
          FileVersion = version,
-         Company = "CPI Card Group, Inc.",
          Description = description
       });
    });
@@ -61,7 +60,7 @@ Task("Build")
          .WithProperty("RunOctoPack", "true")
          .WithProperty("OctoPackPackageVersion", version);
       }
-      MSBuild(string.Format("./src/{0}.sln", solution), settings);
+      MSBuild(string.Format("./{0}.sln", solution), settings);
    });
 
 Task("RunUnitTests")
@@ -73,7 +72,7 @@ Task("RunUnitTests")
 Task("PackNuGet")
    .IsDependentOn("Build")
    .Does(() => {
-      NuGetPack(string.Format("./src/{0}/{0}.csproj", project), new NuGetPackSettings{
+      NuGetPack(string.Format("./{0}/{0}.csproj", project), new NuGetPackSettings{
          OutputDirectory = buildDir,
          Properties = new Dictionary<string,string>{{"OutDir", MakeAbsolute(buildDir).ToString()}}
       });
