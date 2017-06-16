@@ -82,7 +82,11 @@ namespace ConsulClient
 
         public async Task<bool> DeregisterCheck(string checkId)
         {
-            throw new NotImplementedException();
+            var url = $"{BaseAgentUrl()}/check/deregister/{checkId}";
+
+            var result = await url.PutAsync(null);
+
+            return result.StatusCode == HttpStatusCode.OK;
         }
 
         public async Task<List<Check>> GetChecks()
