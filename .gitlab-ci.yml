@@ -1,0 +1,34 @@
+# Arbitrarily named stages run in sequential order.
+stages:
+   - Build
+   - Test
+   - Push
+
+BuildProject:
+   script:
+      - .\build.ps1 -Configuration Release -Target Build -buildOctoPackage=true
+   artifacts:
+      paths:
+         - build/
+         - tools/
+         - src/packages/
+      expire_in: 30min
+   stage: Build
+   except:
+      - master
+   tags:
+      - net461
+      - powershell
+
+PushNuget:
+   dependencies:
+      - BuildProject
+   script:
+      - .\tools\cake\cake.exe build.cake -Configuration=Release -Target=PackNuGet -pushNuget=true -built=true
+   stage: Push
+   only:
+      - /^release.*$/
+      - /^hotfix.*$/
+   tags:
+      - net461
+      - powershell
