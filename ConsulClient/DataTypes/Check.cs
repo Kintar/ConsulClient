@@ -11,7 +11,7 @@ namespace ConsulClient.DataTypes
         public string Node { get; set; }
         public string CheckID { get; set; }
         public string Name { get; set; }
-        public string Status { get; set; }
+        public ServiceCheckStatus Status { get; set; }
         public string Notes { get; set; }
         public string Output { get; set; }
         public string ServiceID { get; set; }

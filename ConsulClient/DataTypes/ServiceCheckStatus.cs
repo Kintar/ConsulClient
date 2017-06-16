@@ -12,4 +12,23 @@ namespace ConsulClient.DataTypes
         Warning,
         Critical
     }
+
+    public static class ServiceCheckStatusConverter
+    {
+        /// <summary>
+        /// Parses a string to a ServiceCheckStatus
+        /// </summary>
+        /// <param name="scsString"></param>
+        /// <returns>The parsed enum value, or ServiceCheckStatus.Critical if the input value does not match a known enum value</returns>
+        public static ServiceCheckStatus FromString(string scsString)
+        {
+            ServiceCheckStatus result;
+            if (Enum.TryParse(scsString, true, out result))
+            {
+                return result;
+            }
+
+            return ServiceCheckStatus.Critical;
+        }
+    }
 }

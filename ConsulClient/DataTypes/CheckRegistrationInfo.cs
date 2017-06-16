@@ -9,7 +9,7 @@ namespace ConsulClient.DataTypes
     public class CheckRegistrationInfo
     {
         public string Name { get; set; }
-        public string Id { get; set; }
+        public string CheckID { get; set; }
         public string Interval { get; set; }
         public string Notes {get;set; }
         public string DeregisterCriticalServiceAfter {get;set; }

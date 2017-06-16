@@ -1,19 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using ConsulClient.DataTypes;
-using Flurl;
-using Flurl.Http;
+using log4net;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 
 namespace ConsulClient
 {
-    public class ConsulProvider : IConsulProvider
+    public class ConsulProvider
     {
+        protected static readonly ILog Log = LogManager.GetLogger(typeof(ConsulProvider));
+        protected static readonly HttpClient Client = new HttpClient();
+        protected static readonly JsonSerializer Serializer = JsonSerializer.CreateDefault();
+        protected static readonly MediaTypeHeaderValue MediaJson = new MediaTypeHeaderValue("application/json");
+
         public string ConsulHost { get; } = "127.0.0.1";
         public int ConsulHttpPort { get; } = 8500;
         public string ServiceHostName { get; }
@@ -21,6 +30,8 @@ namespace ConsulClient
         public ConsulProvider()
         {
             ServiceHostName = Environment.MachineName;
+            InitClient();
+            InitSerializer();
         }
 
         public ConsulProvider(string host, int port, string serviceHostName)
@@ -28,43 +39,72 @@ namespace ConsulClient
             ConsulHost = host;
             ConsulHttpPort = port;
             ServiceHostName = serviceHostName;
+            InitClient();
+            InitSerializer();
         }
 
-        private string BaseAgentUrl()
+        private static void InitSerializer()
         {
-            return $"http://{ConsulHost}:{ConsulHttpPort}/v1/agent";
+            Serializer.NullValueHandling = NullValueHandling.Ignore;
+            Serializer.Converters.Add(new StringEnumConverter(true));
         }
 
-        private string BaseHealthUrl()
+        private void InitClient()
         {
-            return $"http://{ConsulHost}:{ConsulHttpPort}/v1/health";
+            Client.BaseAddress = new Uri($"http://{ConsulHost}:{ConsulHttpPort}");
+            Client.DefaultRequestHeaders.Accept.Clear();
+            Client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        }
+        
+        protected string SerializeJson(object obj)
+        {
+            if (obj == null) return "";
+
+            using (var sw = new StringWriter())
+            {
+                Serializer.Serialize(sw, obj);
+                return sw.ToString();
+            }
         }
 
-        public async Task<bool> RegisterService(ServiceRegistrationInfo service)
+        private async Task<bool> HandleResponse(Task<HttpResponseMessage> responseTask)
         {
-            var url = $"{BaseAgentUrl()}/service/register";
+            var response = await responseTask;
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                return true;
+            }
 
-            var result = await url.PostJsonAsync(service);
-            
-            return result.StatusCode == HttpStatusCode.OK;
+            var responseText = await response.Content.ReadAsStringAsync();
+            Log.Warn($"{response.RequestMessage.RequestUri} => {response.RequestMessage.Method} failed : ({(int)response.StatusCode}) {responseText}");
+            return false;
+        }
+
+        private async Task<bool> PutJsonAsync(string path, object obj)
+        {
+            var content = new StringContent(SerializeJson(obj));
+            content.Headers.ContentType = MediaJson;
+            return await HandleResponse(Client.PutAsync(path, content));
+        }
+        
+        public async Task<bool> RegisterServiceAsync(ServiceRegistrationInfo service)
+        {
+            return await PutJsonAsync("/v1/agent/service/register", service);
         }
 
         public async Task<bool> DeregisterService(string serviceId)
         {
-            var url = $"{BaseAgentUrl()}/service/deregister/{serviceId}";
-
-            var result = await url.PutAsync(null);
-
-            return result.StatusCode == HttpStatusCode.OK;
+            var url = $"/v1/agent/service/deregister/{serviceId}";
+            return await PutJsonAsync(url, null);
         }
 
         public async Task<IList<Service>> GetServices(string serviceName)
         {
-            var url = $"{BaseHealthUrl()}/service/{serviceName}?passing";
+            var url = $"/v1/health/service/{serviceName}?passing";
 
-            var results = await url.GetStringAsync();
-
-            var arry = JArray.Parse(results);
+            var result = await Client.GetStringAsync(url);
+            
+            var arry = JArray.Parse(result);
             var services = arry.Select(entry => new Service
             {
                 Name = entry["Service"]["Service"].ToString(),
@@ -77,26 +117,40 @@ namespace ConsulClient
 
         public async Task<bool> RegisterCheck(CheckRegistrationInfo check)
         {
-            throw new NotImplementedException();
+            return await PutJsonAsync("/v1/agent/check/register", check);
         }
 
         public async Task<bool> DeregisterCheck(string checkId)
         {
-            var url = $"{BaseAgentUrl()}/check/deregister/{checkId}";
-
-            var result = await url.PutAsync(null);
-
-            return result.StatusCode == HttpStatusCode.OK;
+            var url = $"/v1/agent/check/deregister/{checkId}";
+            return await PutJsonAsync(url, null);
         }
 
-        public async Task<List<Check>> GetChecks()
+        public async Task<IList<Check>> GetChecks()
         {
-            throw new NotImplementedException();
+            var result = await Client.GetStringAsync("/v1/agent/checks");
+            
+            var arry = JArray.Parse(result);
+            return arry.Select(entry => new Check {
+                Node = entry["Node"].ToString(),
+                CheckID = entry["CheckID"].ToString(),
+                Name = entry["Name"].ToString(),
+                Notes = entry["Notes"].ToString(),
+                Output = entry["Output"].ToString(),
+                ServiceID = entry["ServiceID"].ToString(),
+                ServiceName = entry["ServiceName"].ToString(),
+                Status = ServiceCheckStatusConverter.FromString(entry["Status"].ToString())
+            }).ToList();
         }
 
-        public async Task<bool> UpdateTTLCheck(string checkId, string note, ServiceCheckStatus status)
+        public async Task<bool> UpdateTTLCheck(string checkId, string output, ServiceCheckStatus status)
         {
-            throw new NotImplementedException();
+            var url = $"/v1/agent/check/update/{checkId}";
+
+            return await PutJsonAsync(url, new {
+                Status = status.ToString().ToLower(),
+                Output = output
+            });
         }
     }
 }
