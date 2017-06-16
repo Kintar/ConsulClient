@@ -16,5 +16,6 @@ namespace ConsulClient.DataTypes
         public string Output { get; set; }
         public string ServiceID { get; set; }
         public string ServiceName { get; set; }
+        public string[] ServiceTags { get; set; }
     }
 }

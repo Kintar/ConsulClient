@@ -48,12 +48,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ConsulProvider.cs" />
+    <Compile Include="Consul.cs" />
     <Compile Include="DataTypes\Check.cs" />
     <Compile Include="DataTypes\CheckRegistrationInfo.cs" />
     <Compile Include="DataTypes\Service.cs" />
     <Compile Include="DataTypes\ServiceCheckStatus.cs" />
     <Compile Include="DataTypes\ServiceRegistrationInfo.cs" />
+    <Compile Include="IConsul.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -16,9 +16,9 @@ using Newtonsoft.Json.Linq;
 
 namespace ConsulClient
 {
-    public class ConsulProvider
+    public class Consul : IConsul
     {
-        protected static readonly ILog Log = LogManager.GetLogger(typeof(ConsulProvider));
+        protected static readonly ILog Log = LogManager.GetLogger(typeof(Consul));
         protected static readonly HttpClient Client = new HttpClient();
         protected static readonly JsonSerializer Serializer = JsonSerializer.CreateDefault();
         protected static readonly MediaTypeHeaderValue MediaJson = new MediaTypeHeaderValue("application/json");
@@ -27,14 +27,14 @@ namespace ConsulClient
         public int ConsulHttpPort { get; } = 8500;
         public string ServiceHostName { get; }
 
-        public ConsulProvider()
+        public Consul()
         {
             ServiceHostName = Environment.MachineName;
             InitClient();
             InitSerializer();
         }
 
-        public ConsulProvider(string host, int port, string serviceHostName)
+        public Consul(string host, int port, string serviceHostName)
         {
             ConsulHost = host;
             ConsulHttpPort = port;
@@ -92,45 +92,57 @@ namespace ConsulClient
             return await PutJsonAsync("/v1/agent/service/register", service);
         }
 
-        public async Task<bool> DeregisterService(string serviceId)
+        public async Task<bool> DeregisterServiceAsync(string serviceId)
         {
             var url = $"/v1/agent/service/deregister/{serviceId}";
             return await PutJsonAsync(url, null);
         }
 
-        public async Task<IList<Service>> GetServices(string serviceName)
+        public async Task<IList<Service>> GetServicesAsync(string serviceName, params string[] tags)
         {
             var url = $"/v1/health/service/{serviceName}?passing";
 
             var result = await Client.GetStringAsync(url);
             
             var arry = JArray.Parse(result);
-            var services = arry.Select(entry => new Service
+            
+            var services = arry
+                .Where(entry =>
+                {
+                    if (tags.Length == 0) return true;
+
+                    var entryTags = entry["Service"]["Tags"].Select(i => i.Value<string>()).ToArray();
+                    return tags.All(entryTags.Contains);
+                })
+                .Select(entry => new Service
             {
                 Name = entry["Service"]["Service"].ToString(),
                 Address = entry["Service"]["Address"].ToString(),
-                Port = Convert.ToInt16(entry["Service"]["Port"])
-            }).ToList();
+                Port = Convert.ToInt16(entry["Service"]["Port"]),
+                Tags = entry["Service"]["Tags"].Select(i => i.Value<string>()).ToArray(),
+                ID = entry["Service"]["ID"].ToString()
+                }).ToList();
             
             return services;
         }
 
-        public async Task<bool> RegisterCheck(CheckRegistrationInfo check)
+        public async Task<bool> RegisterCheckAsync(CheckRegistrationInfo check)
         {
             return await PutJsonAsync("/v1/agent/check/register", check);
         }
 
-        public async Task<bool> DeregisterCheck(string checkId)
+        public async Task<bool> DeregisterCheckAsync(string checkId)
         {
             var url = $"/v1/agent/check/deregister/{checkId}";
             return await PutJsonAsync(url, null);
         }
 
-        public async Task<IList<Check>> GetChecks()
+        public async Task<IList<Check>> GetChecksAsync()
         {
-            var result = await Client.GetStringAsync("/v1/agent/checks");
+            var result = await Client.GetStringAsync($"/v1/health/node/{ServiceHostName}");
             
             var arry = JArray.Parse(result);
+
             return arry.Select(entry => new Check {
                 Node = entry["Node"].ToString(),
                 CheckID = entry["CheckID"].ToString(),
@@ -143,7 +155,7 @@ namespace ConsulClient
             }).ToList();
         }
 
-        public async Task<bool> UpdateTTLCheck(string checkId, string output, ServiceCheckStatus status)
+        public async Task<bool> UpdateTTLCheckAsync(string checkId, string output, ServiceCheckStatus status)
         {
             var url = $"/v1/agent/check/update/{checkId}";
 
