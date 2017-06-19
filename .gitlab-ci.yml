@@ -1,7 +1,6 @@
 # Arbitrarily named stages run in sequential order.
 stages:
    - Build
-   - Test
    - Push
 
 BuildProject:
@@ -17,7 +16,7 @@ BuildProject:
    except:
       - master
    tags:
-      - net461
+      - net452
       - powershell
 
 PushNuget:
@@ -30,5 +29,5 @@ PushNuget:
       - /^release.*$/
       - /^hotfix.*$/
    tags:
-      - net461
+      - net452
       - powershell
